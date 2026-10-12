@@ -4,240 +4,678 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WaterMark Remover</title>
+<meta name="theme-color" content="#0b1020">
+<title>CleanFrame AI</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#0b1020;color:#f4f7ff;
-font-family:Arial,sans-serif;padding:22px}
-main{max-width:720px;margin:auto}
-header{text-align:center;padding:25px 0}
-h1{margin:0;color:#70a5ff;font-size:36px}
-p{color:#aab6ce;line-height:1.5}
-.panel{background:#151d32;padding:18px;
-border:1px solid #293653;border-radius:16px;margin:16px 0}
-button,select,input{font:inherit}
-button,select,.upload{padding:12px;border-radius:9px;
-border:1px solid #405477;background:#202d48;color:white}
-button{cursor:pointer}
-button:disabled{opacity:.4}
-.upload{display:block;text-align:center;margin:12px 0}
-input[type=file]{max-width:100%}
-#canvas{display:block;width:100%;height:auto;
-border-radius:10px;touch-action:none;background:#090d16}
-.row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
-.row>*{flex:1;min-width:120px}
-label{display:block;margin:12px 0 6px}
-small{color:#aab6ce}
-a{color:#8bb6ff}
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --panel: #151d32;
+  --line: #2b3a59;
+  --text: #f4f7ff;
+  --muted: #aab6ce;
+  --blue: #77aaff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, sans-serif;
+}
+main { max-width: 800px; margin: auto; }
+header { text-align: center; padding: 22px 0; }
+h1 { margin: 0; color: var(--blue); font-size: 38px; }
+h2 { font-size: 19px; margin-top: 0; }
+p, small { color: var(--muted); }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 14px 0;
+}
+label { display: block; margin: 12px 0 6px; }
+input, select, button {
+  font: inherit;
+  max-width: 100%;
+}
+input[type="url"], select {
+  width: 100%;
+  padding: 12px;
+  color: white;
+  background: #202d48;
+  border: 1px solid #405477;
+  border-radius: 10px;
+}
+input[type="file"] { display: block; width: 100%; margin-top: 8px; }
+.upload {
+  display: block;
+  padding: 14px;
+  border: 1px dashed #60769c;
+  border-radius: 12px;
+}
+button {
+  padding: 12px;
+  background: #202d48;
+  color: white;
+  border: 1px solid #405477;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+button:disabled { opacity: .45; }
+.row { display: flex; gap: 10px; margin: 12px 0; }
+.row > * { flex: 1; min-width: 0; }
+.stage {
+  overflow: hidden;
+  border-radius: 12px;
+  background: #070b13;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+video {
+  display: block;
+  width: 100%;
+  max-height: 55vh;
+  background: #070b13;
+  border-radius: 12px;
+}
+.note { font-size: 13px; }
+.status { overflow-wrap: anywhere; }
+.badge {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 99px;
+  background: #243654;
+  color: #cde0ff;
+  font-size: 12px;
+}
+.hidden { display: none !important; }
+@media(max-width: 420px) {
+  body { padding: 10px; }
+  .panel { padding: 12px; }
+}
 </style>
 </head>
 <body>
 <main>
 <header>
-<h1>WaterMark Remover</h1>
-<p>Clean up Watermarks. Your files stay in your browser.</p>
+  <h1>CleanFrame AI</h1>
+  <p>Your image and video cleanup studio.</p>
+  <span class="badge">Images</span>
+  <span class="badge">Video frames</span>
+  <span class="badge">AI-ready</span>
 </header>
 
 <section class="panel">
-<label class="upload">
-Choose an image
-<input id="file" type="file" accept="image/*">
-</label>
-<p id="status">Choose an image to get started.</p>
-<canvas id="canvas"></canvas>
-<small>Drag across the image to select the area to edit.</small>
+  <h2>1. Upload media</h2>
+  <label class="upload">
+    Choose an image or video
+    <input id="file" type="file"
+      accept="image/*,video/*">
+  </label>
 
-<label for="mode">Cleanup method</label>
-<select id="mode" style="width:100%">
-<option value="blur">Blur selected area</option>
-<option value="pixel">Pixelate selected area</option>
-<option value="crop">Crop to selected area</option>
-</select>
+  <p id="status" class="status">
+    Upload content you own or have permission to edit.
+  </p>
 
-<div class="row">
-<button id="apply" disabled>Apply cleanup</button>
-<button id="reset" disabled>Reset image</button>
-</div>
-<button id="download" disabled style="width:100%">
-Download PNG
-</button>
+  <div id="videoWrap" class="hidden">
+    <video id="video" controls playsinline></video>
+    <p class="note">
+      Pause the video on the frame you want to edit.
+      This version exports individual frames, not complete videos.
+    </p>
+  </div>
+
+  <div class="stage">
+    <canvas id="canvas"></canvas>
+  </div>
+  <p class="note">
+    Drag over the image to select the area to clean.
+    On video, pause first.
+  </p>
 </section>
-<p><small>Only edit content you own or have permission to modify.
-This starter version does not use generative AI inpainting.</small></p>
+
+<section class="panel">
+  <h2>2. Cleanup methods</h2>
+  <label for="method">Select a method</label>
+  <select id="method">
+    <option value="ai">AI inpainting (backend required)</option>
+    <option value="smart">Content-aware approximation</option>
+    <option value="clone">Nearby-pixel repair</option>
+    <option value="pixel">Pixelation</option>
+    <option value="blur">Blur</option>
+    <option value="crop">Crop selected region (images)</option>
+  </select>
+
+  <p id="help" class="note">
+    AI inpainting reconstructs a selected area using a trained model.
+    Configure a compatible backend below to enable it.
+  </p>
+
+  <div class="row">
+    <button id="apply" disabled>Apply cleanup</button>
+    <button id="reset" disabled>Reset</button>
+  </div>
+
+  <div class="row">
+    <button id="download" disabled>Download image</button>
+    <button id="downloadFrame" disabled>Download video frame</button>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>3. AI inpainting connection</h2>
+  <p class="note">
+    Enter the URL of your deployed image-inpainting API.
+    Do not place secret API keys in this public website.
+  </p>
+
+  <label for="api">Backend URL</label>
+  <input id="api" type="url"
+    placeholder="https://your-server.example/api/inpaint">
+
+  <p class="note">
+    Expected request: POST multipart/form-data with fields
+    <code>image</code> and <code>mask</code>.
+    The response must be the edited image.
+    White mask pixels indicate areas to reconstruct.
+  </p>
+</section>
+
+<footer>
+  <p class="note">
+    AI quality depends on the model and image. Reconstructed areas
+    may differ from the original background.
+  </p>
+</footer>
 </main>
 
 <script>
-const file = document.getElementById("file");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const status = document.getElementById("status");
-const apply = document.getElementById("apply");
-const reset = document.getElementById("reset");
-const download = document.getElementById("download");
-const mode = document.getElementById("mode");
+const $ = id => document.getElementById(id);
+const canvas = $("canvas");
+const ctx = canvas.getContext("2d", {
+  willReadFrequently: true
+});
+const video = $("video");
 
+let kind = "";
 let original = null;
+let sourceImage = null;
 let selection = null;
 let start = null;
 let dragging = false;
+let videoURL = null;
+let busy = false;
 
-function draw() {
-  if (!original) return;
-  canvas.width = original.width;
-  canvas.height = original.height;
-  ctx.putImageData(original, 0, 0);
-  if (selection) {
-    const {x,y,w,h} = selection;
-    ctx.save();
-    ctx.strokeStyle = "#70a5ff";
-    ctx.lineWidth = Math.max(2, canvas.width / 300);
-    ctx.setLineDash([8,5]);
-    ctx.strokeRect(x,y,w,h);
-    ctx.restore();
-  }
+function status(message) {
+  $("status").textContent = message;
 }
 
-function point(e) {
-  const r = canvas.getBoundingClientRect();
+function sizeFor(w, h) {
+  const scale = Math.min(1, 1800 / w, 1800 / h);
+  return [
+    Math.max(1, Math.round(w * scale)),
+    Math.max(1, Math.round(h * scale))
+  ];
+}
+
+function snapshot() {
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
+function buttons(enabled) {
+  $("apply").disabled = !enabled;
+  $("reset").disabled = !enabled;
+  $("download").disabled = !enabled || kind !== "image";
+  $("downloadFrame").disabled = !enabled || kind !== "video";
+}
+
+function drawSelection() {
+  if (!selection) return;
+  ctx.save();
+  ctx.strokeStyle = "#77aaff";
+  ctx.lineWidth = Math.max(2, canvas.width / 400);
+  ctx.setLineDash([8, 5]);
+  ctx.strokeRect(
+    selection.x, selection.y,
+    selection.w, selection.h
+  );
+  ctx.restore();
+}
+
+function render() {
+  if (!canvas.width || !canvas.height) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (kind === "image" && original) {
+    ctx.putImageData(original, 0, 0);
+  } else if (
+    kind === "video" && video.readyState >= 2
+  ) {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  }
+
+  drawSelection();
+}
+
+function point(event) {
+  const rect = canvas.getBoundingClientRect();
   return {
-    x: Math.max(0, Math.min(canvas.width,
-      (e.clientX-r.left)*canvas.width/r.width)),
-    y: Math.max(0, Math.min(canvas.height,
-      (e.clientY-r.top)*canvas.height/r.height))
+    x: Math.max(0, Math.min(
+      canvas.width,
+      (event.clientX - rect.left) *
+        canvas.width / rect.width
+    )),
+    y: Math.max(0, Math.min(
+      canvas.height,
+      (event.clientY - rect.top) *
+        canvas.height / rect.height
+    ))
   };
 }
 
-file.addEventListener("change", () => {
-  const f = file.files[0];
-  if (!f) return;
-  if (!f.type.startsWith("image/")) {
-    status.textContent = "Please choose an image.";
+$("file").addEventListener("change", () => {
+  const file = $("file").files[0];
+  if (!file) return;
+
+  if (
+    !file.type.startsWith("image/") &&
+    !file.type.startsWith("video/")
+  ) {
+    status("Choose a supported image or video.");
     return;
   }
-  if (f.size > 15*1024*1024) {
-    status.textContent = "Choose an image under 15 MB.";
+
+  if (file.size > 100 * 1024 * 1024) {
+    status("Choose a file smaller than 100 MB.");
     return;
   }
-  const url = URL.createObjectURL(f);
-  const img = new Image();
-  img.onload = () => {
-    URL.revokeObjectURL(url);
-    const scale = Math.min(1, 2000/img.width, 2000/img.height);
-    const temp = document.createElement("canvas");
-    temp.width = Math.round(img.width*scale);
-    temp.height = Math.round(img.height*scale);
-    temp.getContext("2d").drawImage(img,0,0,temp.width,temp.height);
-    original = temp.getContext("2d").getImageData(
-      0,0,temp.width,temp.height);
-    selection = null;
-    draw();
-    apply.disabled = false;
-    reset.disabled = false;
-    download.disabled = false;
-    status.textContent = "Image ready. Select an area.";
-  };
-  img.onerror = () => status.textContent = "Could not load this image.";
-  img.src = url;
+
+  if (videoURL) URL.revokeObjectURL(videoURL);
+  videoURL = URL.createObjectURL(file);
+  selection = null;
+  original = null;
+  sourceImage = null;
+
+  if (file.type.startsWith("image/")) {
+    kind = "image";
+    video.pause();
+    $("videoWrap").classList.add("hidden");
+
+    const image = new Image();
+
+    image.onload = () => {
+      const [w, h] = sizeFor(
+        image.naturalWidth, image.naturalHeight
+      );
+
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(image, 0, 0, w, h);
+      original = snapshot();
+      sourceImage = image;
+
+      render();
+      buttons(true);
+      status("Image ready. Select an area to edit.");
+    };
+
+    image.onerror = () => status("Could not load image.");
+    image.src = videoURL;
+  } else {
+    kind = "video";
+    $("videoWrap").classList.remove("hidden");
+    video.src = videoURL;
+    video.load();
+    buttons(false);
+
+    video.onloadedmetadata = () => {
+      const [w, h] = sizeFor(
+        video.videoWidth, video.videoHeight
+      );
+      canvas.width = w;
+      canvas.height = h;
+      render();
+      buttons(true);
+      status("Video ready. Pause to select a frame area.");
+    };
+  }
 });
 
-canvas.addEventListener("pointerdown", e => {
-  if (!original) return;
-  canvas.setPointerCapture(e.pointerId);
-  start = point(e);
-  dragging = true;
-  selection = {x:start.x,y:start.y,w:0,h:0};
-  draw();
+video.addEventListener("pause", render);
+video.addEventListener("seeked", () => {
+  selection = null;
+  render();
 });
 
-canvas.addEventListener("pointermove", e => {
-  if (!dragging) return;
-  const p = point(e);
+canvas.addEventListener("pointerdown", event => {
+  if (!canvas.width || !canvas.height) return;
+
+  if (kind === "video" && !video.paused) {
+    status("Pause the video before selecting.");
+    return;
+  }
+
+  canvas.setPointerCapture(event.pointerId);
+  start = point(event);
   selection = {
-    x:Math.min(start.x,p.x), y:Math.min(start.y,p.y),
-    w:Math.abs(p.x-start.x), h:Math.abs(p.y-start.y)
+    x: start.x, y: start.y, w: 0, h: 0
   };
-  draw();
+  dragging = true;
+  render();
+});
+
+canvas.addEventListener("pointermove", event => {
+  if (!dragging) return;
+
+  const p = point(event);
+  selection = {
+    x: Math.min(start.x, p.x),
+    y: Math.min(start.y, p.y),
+    w: Math.abs(p.x - start.x),
+    h: Math.abs(p.y - start.y)
+  };
+  render();
 });
 
 function stopDrag() {
   if (!dragging) return;
   dragging = false;
-  if (selection && (selection.w<3 || selection.h<3)) {
+
+  if (selection &&
+      (selection.w < 3 || selection.h < 3)) {
     selection = null;
   }
-  draw();
+
+  render();
 }
+
 canvas.addEventListener("pointerup", stopDrag);
 canvas.addEventListener("pointercancel", stopDrag);
 
-apply.addEventListener("click", () => {
-  if (!original || !selection ||
-      selection.w<2 || selection.h<2) {
-    status.textContent = "Select an area first.";
-    return;
-  }
-  const {x,y,w,h} = selection;
-  const sx=Math.round(x), sy=Math.round(y);
-  const sw=Math.max(1,Math.round(w));
-  const sh=Math.max(1,Math.round(h));
+const help = {
+  ai: "Generative inpainting requires a compatible backend.",
+  smart: "Blends surrounding edge colors. Best for small areas and smooth backgrounds.",
+  clone: "Copies nearby pixels into the selection. Repeated textures may be visible.",
+  pixel: "Pixelates the selected region; it does not reconstruct the background.",
+  blur: "Blurs the selected region; it does not reconstruct the background.",
+  crop: "Keeps only the selected region. Images only."
+};
 
-  if (mode.value === "crop") {
-    const data = ctx.getImageData(sx,sy,sw,sh);
-    original = data;
-    selection = null;
-    draw();
-    status.textContent = "Crop complete.";
-    return;
-  }
-
-  const temp = document.createElement("canvas");
-  temp.width=canvas.width;
-  temp.height=canvas.height;
-  const t=temp.getContext("2d");
-  t.putImageData(original,0,0);
-
-  if (mode.value === "blur") {
-    const patch=document.createElement("canvas");
-    patch.width=sw; patch.height=sh;
-    const p=patch.getContext("2d");
-    p.filter="blur("+Math.max(4,Math.round(sw/18))+"px)";
-    p.drawImage(temp,sx,sy,sw,sh,0,0,sw,sh);
-    t.drawImage(patch,sx,sy);
-  } else {
-    const pw=Math.max(1,Math.round(sw/18));
-    const ph=Math.max(1,Math.round(sh/18));
-    const patch=document.createElement("canvas");
-    patch.width=pw; patch.height=ph;
-    patch.getContext("2d").drawImage(
-      temp,sx,sy,sw,sh,0,0,pw,ph);
-    t.imageSmoothingEnabled=false;
-    t.drawImage(patch,0,0,pw,ph,sx,sy,sw,sh);
-  }
-
-  original=t.getImageData(0,0,canvas.width,canvas.height);
-  selection=null;
-  draw();
-  status.textContent="Cleanup applied. You can download the image.";
+$("method").addEventListener("change", () => {
+  $("help").textContent = help[$("method").value];
 });
 
-reset.addEventListener("click", () => {
-  if (!original) return;
-  draw();
-  selection=null;
-  draw();
-  status.textContent="Select an area to edit.";
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function sample(data, width, height, x, y) {
+  x = clamp(Math.round(x), 0, width - 1);
+  y = clamp(Math.round(y), 0, height - 1);
+  const i = (y * width + x) * 4;
+  return [data[i], data[i+1], data[i+2]];
+}
+
+function smartFill(imageData, s) {
+  const d = imageData.data;
+  const W = imageData.width;
+  const H = imageData.height;
+
+  const x0 = Math.floor(s.x);
+  const y0 = Math.floor(s.y);
+  const x1 = Math.min(W, Math.ceil(s.x + s.w));
+  const y1 = Math.min(H, Math.ceil(s.y + s.h));
+  const band = Math.max(
+    2, Math.min(12, Math.floor(Math.min(s.w, s.h) / 5))
+  );
+
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const tx = (x - x0) / Math.max(1, x1 - x0 - 1);
+      const ty = (y - y0) / Math.max(1, y1 - y0 - 1);
+      let a, b, t;
+
+      if (tx < ty) {
+        a = sample(d, W, H, x0 - band, y);
+        b = sample(d, W, H, x1 + band, y);
+        t = tx;
+      } else {
+        a = sample(d, W, H, x, y0 - band);
+        b = sample(d, W, H, x, y1 + band);
+        t = ty;
+      }
+
+      const i = (y * W + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        d[i+c] = Math.round(a[c] * (1-t) + b[c] * t);
+      }
+    }
+  }
+}
+
+function cloneFill(imageData, s) {
+  const d = imageData.data;
+  const W = imageData.width;
+  const H = imageData.height;
+  const copy = new Uint8ClampedArray(d);
+  const x0 = Math.floor(s.x), y0 = Math.floor(s.y);
+  const x1 = Math.min(W, Math.ceil(s.x+s.w));
+  const y1 = Math.min(H, Math.ceil(s.y+s.h));
+  const offset = Math.max(3, Math.min(24, Math.floor(s.w/4)));
+
+  for (let y=y0; y<y1; y++) {
+    for (let x=x0; x<x1; x++) {
+      const sx = x + offset < W ? x + offset : x - offset;
+      const from = (y*W + clamp(sx,0,W-1))*4;
+      const to = (y*W+x)*4;
+      for (let c=0; c<4; c++) d[to+c] = copy[from+c];
+    }
+  }
+}
+
+function pixelate(imageData, s) {
+  const d = imageData.data;
+  const W = imageData.width;
+  const x0=Math.floor(s.x), y0=Math.floor(s.y);
+  const x1=Math.min(W,Math.ceil(s.x+s.w));
+  const y1=Math.min(imageData.height,Math.ceil(s.y+s.h));
+  const step=Math.max(5,Math.floor(Math.min(s.w,s.h)/15));
+
+  for(let y=y0;y<y1;y+=step) {
+    for(let x=x0;x<x1;x+=step) {
+      let r=0,g=0,b=0,n=0;
+      for(let yy=y;yy<Math.min(y1,y+step);yy++) {
+        for(let xx=x;xx<Math.min(x1,x+step);xx++) {
+          const i=(yy*W+xx)*4;
+          r+=d[i];g+=d[i+1];b+=d[i+2];n++;
+        }
+      }
+      for(let yy=y;yy<Math.min(y1,y+step);yy++) {
+        for(let xx=x;xx<Math.min(x1,x+step);xx++) {
+          const i=(yy*W+xx)*4;
+          d[i]=r/n;d[i+1]=g/n;d[i+2]=b/n;
+        }
+      }
+    }
+  }
+}
+
+async function aiFill(s) {
+  const url=$("api").value.trim();
+  if(!url) throw new Error("Enter your AI backend URL first.");
+
+  const imageCanvas=document.createElement("canvas");
+  imageCanvas.width=canvas.width;
+  imageCanvas.height=canvas.height;
+  imageCanvas.getContext("2d").drawImage(canvas,0,0);
+
+  const mask=document.createElement("canvas");
+  mask.width=canvas.width;
+  mask.height=canvas.height;
+  const m=mask.getContext("2d");
+  m.fillStyle="black";
+  m.fillRect(0,0,mask.width,mask.height);
+  m.fillStyle="white";
+  m.fillRect(s.x,s.y,s.w,s.h);
+
+  const [imageBlob,maskBlob]=await Promise.all([
+    new Promise(resolve=>imageCanvas.toBlob(resolve,"image/png")),
+    new Promise(resolve=>mask.toBlob(resolve,"image/png"))
+  ]);
+
+  if(!imageBlob||!maskBlob) throw new Error("Could not prepare image.");
+
+  const form=new FormData();
+  form.append("image",imageBlob,"image.png");
+  form.append("mask",maskBlob,"mask.png");
+
+  const response=await fetch(url,{method:"POST",body:form});
+  if(!response.ok) throw new Error("AI API error: "+response.status);
+
+  const blob=await response.blob();
+  if(!blob.type.startsWith("image/")) {
+    throw new Error("The backend did not return an image.");
+  }
+
+  const bitmap=await createImageBitmap(blob);
+  canvas.width=bitmap.width;
+  canvas.height=bitmap.height;
+  ctx.drawImage(bitmap,0,0);
+  bitmap.close();
+  original=snapshot();
+}
+
+$("apply").addEventListener("click", async () => {
+  if(!selection || selection.w<2 || selection.h<2) {
+    status("Select an area first.");
+    return;
+  }
+  if(kind==="video" && !video.paused) {
+    status("Pause the video first.");
+    return;
+  }
+  if(kind==="video" && $("method").value==="crop") {
+    status("Crop is available for images only.");
+    return;
+  }
+
+  const s={...selection};
+  const chosen=$("method").value;
+  busy=true;
+  $("apply").disabled=true;
+
+  try {
+    if(chosen==="ai") {
+      status("Connecting to AI inpainting backend…");
+      await aiFill(s);
+    } else if(kind==="video") {
+      const frame=document.createElement("canvas");
+      frame.width=canvas.width;
+      frame.height=canvas.height;
+      const fctx=frame.getContext("2d");
+      fctx.drawImage(video,0,0,frame.width,frame.height);
+      const data=fctx.getImageData(0,0,frame.width,frame.height);
+
+      if(chosen==="smart") smartFill(data,s);
+      else if(chosen==="clone") cloneFill(data,s);
+      else if(chosen==="pixel") pixelate(data,s);
+      else if(chosen==="blur") {
+        fctx.save();
+        fctx.beginPath();
+        fctx.rect(s.x,s.y,s.w,s.h);
+        fctx.clip();
+        fctx.filter="blur(8px)";
+        fctx.drawImage(frame,0,0);
+        fctx.restore();
+      }
+
+      if(chosen!=="blur") fctx.putImageData(data,0,0);
+      ctx.drawImage(frame,0,0);
+      selection=null;
+      drawSelection();
+      status("Edited this video frame. Download the frame below.");
+      return;
+    } else if(chosen==="crop") {
+      const cropped=ctx.getImageData(
+        Math.floor(s.x),Math.floor(s.y),
+        Math.max(1,Math.floor(s.w)),
+        Math.max(1,Math.floor(s.h))
+      );
+      canvas.width=cropped.width;
+      canvas.height=cropped.height;
+      ctx.putImageData(cropped,0,0);
+      original=snapshot();
+    } else if(chosen==="blur") {
+      const temp=document.createElement("canvas");
+      temp.width=canvas.width;
+      temp.height=canvas.height;
+      temp.getContext("2d").drawImage(canvas,0,0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(s.x,s.y,s.w,s.h);
+      ctx.clip();
+      ctx.filter="blur("+Math.max(4,Math.round(s.w/20))+"px)";
+      ctx.drawImage(temp,0,0);
+      ctx.restore();
+      original=snapshot();
+    } else {
+      const data=snapshot();
+      if(chosen==="smart") smartFill(data,s);
+      if(chosen==="clone") cloneFill(data,s);
+      if(chosen==="pixel") pixelate(data,s);
+      ctx.putImageData(data,0,0);
+      original=snapshot();
+    }
+
+    selection=null;
+    render();
+    status("Cleanup applied. Download your edited image.");
+  } catch(error) {
+    status("Could not complete cleanup: "+error.message);
+  } finally {
+    busy=false;
+    $("apply").disabled=false;
+  }
 });
 
-download.addEventListener("click", () => {
-  if (!original) return;
-  const out=document.createElement("canvas");
-  out.width=canvas.width;
-  out.height=canvas.height;
-  out.getContext("2d").putImageData(original,0,0);
-  const a=document.createElement("a");
-  a.download="cleanframe-edited.png";
-  a.href=out.toDataURL("image/png");
-  a.click();
+$("reset").addEventListener("click",()=>{
+  selection=null;
+  if(kind==="image"&&sourceImage) {
+    const [w,h]=sizeFor(sourceImage.naturalWidth,sourceImage.naturalHeight);
+    canvas.width=w;canvas.height=h;
+    ctx.drawImage(sourceImage,0,0,w,h);
+    original=snapshot();
+    status("Original image restored.");
+  } else if(kind==="video") {
+    render();
+    status("Current video frame refreshed.");
+  }
+});
+
+function exportCanvas(name) {
+  canvas.toBlob(blob=>{
+    if(!blob){status("Export failed.");return}
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=name;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  },"image/png");
+}
+
+$("download").addEventListener("click",()=>{
+  if(kind==="image") exportCanvas("cleanframe-edited.png");
+});
+$("downloadFrame").addEventListener("click",()=>{
+  if(kind==="video") exportCanvas("cleanframe-video-frame.png");
 });
 </script>
 </body>
